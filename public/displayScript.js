@@ -4,8 +4,11 @@
 //get the url /display.html?id=ramdomstring
 function encodeUrl() {
   let url = "display.html" + window.location.search;
+  let data = {
+    link: url,
+  };
   console.log("Encoded Url: " + url);
-  return url;
+  return data;
 }
 
 // It sends a GET request for url

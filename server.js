@@ -77,13 +77,15 @@ app.get("/", function (request, response) {
 // send the current postcard to the webpage for this kind of GET request
 // The middleware function handlePostcard is defined above
 //app.get("/display?*", handlePostcard);
+
 app.post("/display", function (request, response) {
   // Url processing
   console.log("handlePostcard start");
-  console.log("recieved request body:", request.body);
-  let url = request.body;
-  let infoList = url.substring(url.indexOf("?") + 4); // initial url is /studentList/list?*, get the substring starting from the character after '?id='
 
+  let url = request.originalUrl;
+  let infoList = url.substring(url.indexOf("?") + 4); // initial url is /studentList/list?*, get the substring starting from the character after '?id='
+  console.log("get id:", url);
+  console.log("get id:", infoList);
   let cmd = "SELECT * FROM PostcardTable where randomStringId = " + infoList;
 
   postcardDB.all(cmd, function (err, rows) {
