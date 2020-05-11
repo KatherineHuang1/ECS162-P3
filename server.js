@@ -8,6 +8,10 @@ const multer = require("multer");
 const bodyParser = require("body-parser");
 const fs = require("fs");
 const sqlite3 = require("sqlite3").verbose();
+const FormData = require("form-data");
+
+// Send a fixed file for now
+let filename = "/images/placeholder";
 
 let storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -102,6 +106,7 @@ app.get("/getPostcard", handlePostcard);
 // Next, the the two POST AJAX queries
 // Handle a post request to upload an image.
 app.post("/upload", upload.single("newImage"), function (request, response) {
+  console.log("1");
   console.log(
     "Recieved",
     request.file.originalname,
@@ -112,9 +117,73 @@ app.post("/upload", upload.single("newImage"), function (request, response) {
     // file is automatically stored in /images,
     // even though we can't see it.
     // We set this up when configuring multer
-    response.end("recieved " + request.file.originalname);
+    filename = `/images/${request.file.originalname}`;
+    console.log(filename);
+    sendMediaStore(filename, request, response);
+    // response.end("recieved " + request.file.originalname);
   } else throw "error";
 });
+
+//=======================API========================
+// fire off the file upload if we get this "GET"
+app.get("/sendUploadToAPI", function (request, response) {
+  sendMediaStore(filename, request, response);
+});
+
+// function called when the button is pushed
+// handles the upload to the media storage API
+function sendMediaStore(filename, serverRequest, serverResponse) {
+  console.log("2");
+  let apiKey = "i7ssys2150"; //let apiKey = process.env.ECS162KEY;
+  if (apiKey === undefined) {
+    console.log("No key");
+    serverResponse.status(400);
+    serverResponse.send("No API key provided");
+  } else {
+    // we'll send the image from the server in a FormData object
+    let form = new FormData();
+
+    // we can stick other stuff in there too, like the apiKey
+    form.append("apiKey", apiKey);
+    // stick the image into the formdata object
+    form.append("storeImage", fs.createReadStream(__dirname + filename));
+    // and send it off to this URL
+    form.submit("http://ecs162.org:3000/fileUploadToAPI", function (
+      err,
+      APIres
+    ) {
+      // did we get a response from the API server at all?
+      if (APIres) {
+        // OK we did
+        console.log("API response status", APIres.statusCode);
+        // the body arrives in chunks - how gruesome!
+        // this is the kind stream handling that the body-parser
+        // module handles for us in Express.
+        let body = "";
+        APIres.on("data", (chunk) => {
+          body += chunk;
+        });
+        APIres.on("end", () => {
+          // now we have the whole body
+          if (APIres.statusCode != 200) {
+            serverResponse.status(400); // bad request
+            serverResponse.send(" Media server says: " + body);
+          } else {
+            serverResponse.status(200);
+            serverResponse.send(body);
+          }
+          fs.unlink(`.${filename}`, (err) => {
+            if (err) console.log(err);
+          });
+        });
+      } else {
+        // didn't get APIres at all
+        serverResponse.status(500); // internal server error
+        serverResponse.send("Media server seems to be down.");
+      }
+    });
+  }
+}
 
 //==============upload postcard(post)==============
 //generate random string as part of the URL
@@ -154,7 +223,7 @@ app.post("/saveDisplay", function (req, res) {
 // The GET AJAX query is handled by the static server, since the
 // file postcardData.json is stored in /public
 
-// listen for requests :)
+//listen for requests :)
 // var listener = app.listen(process.env.PORT, function () {
 //   console.log("Your app is listening on port " + listener.address().port);
 // });
