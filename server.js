@@ -55,8 +55,6 @@ function createPostcardDB() {
 
 // ==========constructing the server pipeline==========
 const app = express();
-// Handle a post request containing JSON
-app.use(bodyParser.json());
 
 // Serve static files out of public directory
 app.use(express.static("public"));
@@ -70,23 +68,20 @@ app.get("/", function (request, response) {
   response.sendFile(__dirname + "/public/creator.html");
 });
 
-//==============display postcard(post)==============
+//==============display postcard(get)==============
 // A middleware function to handles the GET query /display
 // Observe that it either ends up sending the HTTP response or calls next(), so it
 // is a valid middleware function.
-// send the current postcard to the webpage for this kind of GET request
-// The middleware function handlePostcard is defined above
-//app.get("/display?*", handlePostcard);
-
-app.post("/display", function (request, response) {
+function handlePostcard(request, response, next) {
   // Url processing
   console.log("handlePostcard start");
-
   let url = request.originalUrl;
   let infoList = url.substring(url.indexOf("?") + 4); // initial url is /studentList/list?*, get the substring starting from the character after '?id='
-  console.log("get id:", url);
-  console.log("get id:", infoList);
-  let cmd = "SELECT * FROM PostcardTable where randomStringId = " + infoList;
+  console.log("infoList:", infoList);
+  console.log("infoList length:", infoList.length);
+  console.log("infoList type:", typeof infoList);
+  let cmd =
+    "SELECT * FROM PostcardTable where randomStringId = '" + infoList + "'";
 
   postcardDB.all(cmd, function (err, rows) {
     if (err) {
@@ -98,7 +93,10 @@ app.post("/display", function (request, response) {
       console.log("rows", rows);
     }
   });
-});
+}
+// send the current postcard to the webpage for this kind of GET request
+// The middleware function handlePostcard is defined above
+app.get("/getPostcard", handlePostcard);
 
 //==============upload image(post)==============
 // Next, the the two POST AJAX queries
@@ -124,6 +122,8 @@ function makeid(length) {
   return Math.random().toString(36).substring(length);
 }
 
+// Handle a post request containing JSON
+app.use(bodyParser.json());
 // gets JSON data into req.body
 app.post("/saveDisplay", function (req, res) {
   let r = makeid(2);
